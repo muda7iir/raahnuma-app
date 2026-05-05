@@ -1,68 +1,79 @@
-import React from 'react';
-import { Compass, BookOpen, Users, Settings } from 'lucide-react';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ProfileProvider, useProfile } from './contexts/ProfileContext';
 
-const App: React.FC = () => {
+// Lazy load pages
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
+const RoadmapPage = lazy(() => import('./pages/RoadmapPage'));
+const AssessmentPage = lazy(() => import('./pages/AssessmentPage'));
+const ScholarshipPage = lazy(() => import('./pages/ScholarshipPage'));
+const ResumeBuilderPage = lazy(() => import('./pages/ResumeBuilderPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+
+// Loading fallback
+function PageLoader() {
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      <nav className="border-b bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Compass className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold tracking-tight">Raahnuma</span>
-          </div>
-          <div className="flex gap-6 font-medium text-slate-600">
-            <a href="#" className="hover:text-blue-600">Home</a>
-            <a href="#" className="hover:text-blue-600">Resources</a>
-            <a href="#" className="hover:text-blue-600">About</a>
-          </div>
-          <button className="rounded-full bg-blue-600 px-6 py-2 font-semibold text-white transition hover:bg-blue-700">
-            Get Started
-          </button>
+    <div className="min-h-screen flex items-center justify-center bg-[#f4f8fd] dark:bg-[#0a1220]">
+      <div className="text-center">
+        <div className="w-12 h-12 rounded-xl bg-[#1673CA] flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
         </div>
-      </nav>
-
-      <main className="mx-auto max-w-7xl px-6 py-12">
-        <header className="mb-16 text-center">
-          <h1 className="mb-4 text-5xl font-extrabold tracking-tight text-slate-900 lg:text-6xl">
-            Your Ultimate <span className="text-blue-600">Guide</span> to Success
-          </h1>
-          <p className="mx-auto max-w-2xl text-xl text-slate-600">
-            Raahnuma provides comprehensive guidance and resources for education, career planning, and personal development.
-          </p>
-        </header>
-
-        <section className="grid gap-8 md:grid-cols-3">
-          <div className="group rounded-2xl border bg-white p-8 transition hover:shadow-lg">
-            <div className="mb-4 inline-block rounded-xl bg-blue-100 p-3 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
-              <BookOpen className="h-6 w-6" />
-            </div>
-            <h3 className="mb-2 text-xl font-bold">Educational Roadmap</h3>
-            <p className="text-slate-600">Detailed plans for students at all levels to achieve their academic goals.</p>
-          </div>
-          <div className="group rounded-2xl border bg-white p-8 transition hover:shadow-lg">
-            <div className="mb-4 inline-block rounded-xl bg-green-100 p-3 text-green-600 transition group-hover:bg-green-600 group-hover:text-white">
-              <Users className="h-6 w-6" />
-            </div>
-            <h3 className="mb-2 text-xl font-bold">Community Support</h3>
-            <p className="text-slate-600">Connect with mentors and peers who share your interests and challenges.</p>
-          </div>
-          <div className="group rounded-2xl border bg-white p-8 transition hover:shadow-lg">
-            <div className="mb-4 inline-block rounded-xl bg-purple-100 p-3 text-purple-600 transition group-hover:bg-purple-600 group-hover:text-white">
-              <Settings className="h-6 w-6" />
-            </div>
-            <h3 className="mb-2 text-xl font-bold">Smart Planning</h3>
-            <p className="text-slate-600">AI-powered tools to help you track progress and adjust your roadmap dynamically.</p>
-          </div>
-        </section>
-      </main>
-
-      <footer className="mt-24 border-t bg-white py-12">
-        <div className="mx-auto max-w-7xl px-6 text-center text-slate-500">
-          <p>&copy; 2026 Raahnuma App. All rights reserved.</p>
-        </div>
-      </footer>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+      </div>
     </div>
   );
-};
+}
 
-export default App;
+// Protected route — redirects to onboarding if no profile
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { hasProfile } = useProfile();
+  if (!hasProfile) return <Navigate to="/onboarding" replace />;
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+        <Route path="/chat/:chatId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+        <Route path="/roadmap" element={<ProtectedRoute><RoadmapPage /></ProtectedRoute>} />
+        <Route path="/assessment" element={<ProtectedRoute><AssessmentPage /></ProtectedRoute>} />
+        <Route path="/scholarships" element={<ProtectedRoute><ScholarshipPage /></ProtectedRoute>} />
+        <Route path="/resume" element={<ProtectedRoute><ResumeBuilderPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <ThemeProvider>
+        <ProfileProvider>
+          <AppRoutes />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: { background: '#1f2937', color: '#f9fafb', fontSize: '14px', borderRadius: '12px' },
+              success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
+              error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+            }}
+          />
+        </ProfileProvider>
+      </ThemeProvider>
+    </BrowserRouter>
+  );
+}
