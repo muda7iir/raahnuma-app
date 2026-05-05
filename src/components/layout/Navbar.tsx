@@ -7,6 +7,7 @@ import { useProfile } from '../../contexts/ProfileContext';
 const NAV_LINKS = [
   { label: 'Home', href: '/#home' },
   { label: 'Features', href: '/#features' },
+  { label: 'Find a Mentor', href: '/mentors' },
   { label: 'How It Works', href: '/#how-it-works' },
   { label: 'Pricing', href: '/#pricing' },
   { label: 'FAQ', href: '/#faq' },

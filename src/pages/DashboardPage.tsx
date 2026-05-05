@@ -1,20 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Compass, MessageSquare, Map, ClipboardCheck, GraduationCap, FileText, Settings, Plus, ArrowRight, Lightbulb, TrendingUp, BookOpen, Star } from 'lucide-react';
+import { Compass, MessageSquare, Map, ClipboardCheck, GraduationCap, FileText, Settings, ArrowRight, Lightbulb, Users, Video } from 'lucide-react';
 import { useProfile } from '../contexts/ProfileContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { getChats, getRoadmaps, getAssessments, getScholarships } from '../lib/storage';
-import { sendSinglePrompt } from '../lib/gemini';
+import { getChats, getRoadmaps, getAssessments, getScholarships, getBookings, BookedSession } from '../lib/storage';
 import { Sun, Moon } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 const QUICK_LINKS = [
   { label: 'New Chat', icon: MessageSquare, path: '/chat', color: 'bg-blue-500' },
   { label: 'Roadmap', icon: Map, path: '/roadmap', color: 'bg-emerald-500' },
-  { label: 'Assessment', icon: ClipboardCheck, path: '/assessment', color: 'bg-purple-500' },
+  { label: 'Mentors', icon: Users, path: '/mentors', color: 'bg-indigo-500' },
   { label: 'Scholarships', icon: GraduationCap, path: '/scholarships', color: 'bg-amber-500' },
   { label: 'Resume', icon: FileText, path: '/resume', color: 'bg-rose-500' },
   { label: 'Settings', icon: Settings, path: '/settings', color: 'bg-gray-500' },
+];
+
+const DAILY_TIPS = [
+  "Focus on building one valuable skill this week. Consistency beats intensity.",
+  "Your network is your net worth. Reach out to one new professional on LinkedIn today.",
+  "Tailor your resume for every single job application. Quality over quantity.",
+  "Soft skills like communication and empathy are just as important as technical skills.",
+  "Don't wait to feel 100% ready before applying for that role. You learn on the job."
+];
+
+const DAILY_QUOTES = [
+  "Your career is a marathon, not a sprint. Keep learning.",
+  "The future depends on what you do today.",
+  "Opportunities don't happen, you create them.",
+  "Choose a job you love, and you will never have to work a day in your life.",
+  "The only way to do great work is to love what you do."
 ];
 
 export default function DashboardPage() {
@@ -23,7 +37,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [tip, setTip] = useState('');
   const [quote, setQuote] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [bookings, setBookingsState] = useState<BookedSession[]>([]);
 
   const chats = getChats();
   const roadmaps = getRoadmaps();
@@ -31,22 +45,16 @@ export default function DashboardPage() {
   const scholarships = getScholarships();
 
   useEffect(() => {
-    const loadTip = async () => {
-      try {
-        const cached = sessionStorage.getItem('nxraahnuma_daily_tip');
-        const cachedQuote = sessionStorage.getItem('nxraahnuma_daily_quote');
-        if (cached && cachedQuote) { setTip(cached); setQuote(cachedQuote); setLoading(false); return; }
-        const tipRes = await sendSinglePrompt('Give me one short, actionable career tip of the day in 2 sentences. No heading, just the tip.');
-        const quoteRes = await sendSinglePrompt('Give me one short motivational career quote in 1 sentence. No attribution needed, no quotation marks.');
-        setTip(tipRes);
-        setQuote(quoteRes);
-        sessionStorage.setItem('nxraahnuma_daily_tip', tipRes);
-        sessionStorage.setItem('nxraahnuma_daily_quote', quoteRes);
-      } catch { setTip('Focus on building one valuable skill this week. Consistency beats intensity.'); setQuote('Your career is a marathon, not a sprint. Keep learning.'); }
-      setLoading(false);
-    };
-    loadTip();
+    // Random tip and quote for the day
+    const dayIndex = new Date().getDay() % DAILY_TIPS.length;
+    setTip(DAILY_TIPS[dayIndex]);
+    setQuote(DAILY_QUOTES[dayIndex]);
+    
+    // Load bookings
+    setBookingsState(getBookings());
   }, []);
+
+  const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
 
   return (
     <div className="min-h-screen bg-[#f4f8fd] dark:bg-[#0a1220]">
@@ -71,22 +79,22 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-24 sm:py-8">
         {/* Welcome */}
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Welcome back, <span className="text-[#1673CA]">{profile?.name?.split(' ')[0]}</span>! 👋
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">{loading ? 'Loading your daily motivation...' : quote}</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">{quote}</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'AI Conversations', value: chats.length, icon: MessageSquare, color: 'text-blue-600' },
-            { label: 'Roadmaps Created', value: roadmaps.length, icon: Map, color: 'text-emerald-600' },
+            { label: 'Conversations', value: chats.length, icon: MessageSquare, color: 'text-blue-600' },
+            { label: 'Roadmaps', value: roadmaps.length, icon: Map, color: 'text-emerald-600' },
             { label: 'Assessments', value: assessments.length, icon: ClipboardCheck, color: 'text-purple-600' },
-            { label: 'Scholarships Saved', value: scholarships.length, icon: GraduationCap, color: 'text-amber-600' },
+            { label: 'Mentor Sessions', value: upcomingBookings.length, icon: Users, color: 'text-amber-600' },
           ].map((s, i) => (
             <div key={i} className="bg-white dark:bg-[#111827] rounded-xl border border-gray-200 dark:border-gray-700 p-4">
               <div className="flex items-center justify-between mb-2">
@@ -101,6 +109,35 @@ export default function DashboardPage() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            
+            {/* Upcoming Sessions */}
+            {upcomingBookings.length > 0 && (
+              <div className="bg-white dark:bg-[#111827] rounded-xl border border-[#1673CA]/30 shadow-md shadow-blue-500/5 p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#1673CA]/5 rounded-bl-full pointer-events-none" />
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold flex items-center gap-2"><Video className="w-5 h-5 text-[#1673CA]" /> Upcoming Sessions</h2>
+                </div>
+                <div className="space-y-3">
+                  {upcomingBookings.map(session => (
+                    <div key={session.id} className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full ${session.mentorPhoto} flex items-center justify-center text-white font-bold text-sm`}>
+                          {session.mentorName.split(' ').map(n=>n[0]).join('')}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{session.mentorName}</p>
+                          <p className="text-xs text-[#1673CA] font-medium">{session.date} at {session.time} ({session.duration} min)</p>
+                        </div>
+                      </div>
+                      <a href={session.meetLink} target="_blank" rel="noreferrer" className="px-4 py-2 bg-[#1673CA] text-white text-xs font-semibold rounded-lg hover:bg-[#0d4f8c] transition-colors">
+                        Join Meet
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Recent Chats */}
             <div className="bg-white dark:bg-[#111827] rounded-xl border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -174,18 +211,14 @@ export default function DashboardPage() {
             </div>
 
             {/* Career Tip */}
-            <div className="bg-gradient-to-br from-[#1673CA] to-[#0d4f8c] rounded-xl p-6 text-white">
+            <div className="bg-gradient-to-br from-[#1673CA] to-[#0d4f8c] rounded-xl p-6 text-white shadow-xl shadow-blue-500/10">
               <div className="flex items-center gap-2 mb-3">
                 <Lightbulb className="w-5 h-5 text-amber-300" />
                 <h3 className="font-bold text-sm">Career Tip of the Day</h3>
               </div>
-              {loading ? (
-                <div className="space-y-2"><div className="h-3 bg-white/20 rounded w-full" /><div className="h-3 bg-white/20 rounded w-3/4" /></div>
-              ) : (
-                <p className="text-sm text-blue-100 leading-relaxed">{tip}</p>
-              )}
-              <button onClick={() => navigate('/chat')} className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium transition-colors">
-                Ask AI about this →
+              <p className="text-sm text-blue-100 leading-relaxed mb-4">{tip}</p>
+              <button onClick={() => navigate('/chat')} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium transition-colors border border-white/20">
+                Ask NX RaahNuma about this →
               </button>
             </div>
           </div>

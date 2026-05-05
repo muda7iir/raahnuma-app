@@ -84,10 +84,10 @@ const PRICING = [
 const FAQ_DATA = [
   { q: 'Is NX RaahNuma free to use?', a: 'Yes! NX RaahNuma offers a free tier with 5 AI queries per day, basic roadmaps, and skills assessment. For unlimited access, voice features, and premium tools, check our Pro and Premium plans.' },
   { q: 'How does the AI voice feature work?', a: 'NX RaahNuma uses your browser\'s built-in Web Speech API. Click the microphone icon to speak your question — the AI understands you in real time and can read back its response aloud. Works on Chrome, Edge, and Safari.' },
-  { q: 'How accurate are the career recommendations?', a: 'Our AI is powered by Google Gemini and trained on vast career data. While no AI is perfect, our recommendations are based on real market trends, salary data, and skill requirements. We continuously improve accuracy based on user feedback.' },
+  { q: 'How accurate are the career recommendations?', a: 'Our AI is powered by NerithonX Technologies and trained on vast career data. While no AI is perfect, our recommendations are based on real market trends, salary data, and skill requirements. We continuously improve accuracy based on user feedback.' },
   { q: 'Can I download my career roadmap?', a: 'Absolutely! You can download your personalized career roadmap as a professionally formatted PDF with NerithonX branding. Pro and Premium users get unlimited downloads.' },
   { q: 'What countries and careers does it support?', a: 'NX RaahNuma supports 180+ countries and 200+ career paths across all major industries including Technology, Medicine, Business, Engineering, Arts, Law, and more.' },
-  { q: 'Is my data safe and private?', a: 'Your data is stored locally on your device using browser localStorage. We do not store any personal information on our servers. Your conversations with the AI are processed securely through Google\'s Gemini API.' },
+  { q: 'Is my data safe and private?', a: 'Your data is stored locally on your device using browser localStorage. We do not store any personal information on our servers. Your conversations with the AI are processed securely through the NX AI Engine.' },
   { q: 'How is this different from Google or ChatGPT?', a: 'NX RaahNuma is purpose-built for career counseling. Unlike general AI, every response includes structured action plans, salary data, resource links, and skill requirements. Plus, it offers voice conversations, roadmap generation, scholarship finding, and resume building — all in one platform.' },
   { q: 'Who built NX RaahNuma?', a: 'NX RaahNuma is a product of NerithonX Technologies (Pvt.) Ltd., a technology company focused on building innovative AI-powered solutions for education and career development.' },
 ];
@@ -117,7 +117,7 @@ export default function LandingPage() {
             <div className="text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1673CA]/10 text-[#1673CA] text-sm font-medium mb-6 animate-fade-in">
                 <Sparkles className="w-4 h-4" />
-                Powered by Google Gemini AI
+                Powered by NerithonX Technologies
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 animate-fade-in-up">
                 Discover Your Perfect{' '}
@@ -261,6 +261,39 @@ export default function LandingPage() {
               );
             })}
           </div>
+        </div>
+      </section>
+
+      {/* ===== MENTORS ===== */}
+      <section className="py-20 bg-white dark:bg-[#111827]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <SectionHeader title="Not Satisfied with AI Alone? Talk to a Real Expert" subtitle="Our verified mentors have helped thousands of students land their dream careers" />
+          <div className="grid md:grid-cols-3 gap-6 mt-12 mb-10">
+             {[
+              { name: "Sarah Mitchell", role: "Senior Software Engineer", co: "Google", loc: "🇺🇸", price: "$45/hr", img: "bg-blue-500" },
+              { name: "Dr. Priya Sharma", role: "Data Science Lead", co: "Amazon", loc: "🇮🇳", price: "$50/hr", img: "bg-purple-500" },
+              { name: "James Okonkwo", role: "Startup Founder", co: "Self-Employed", loc: "🇳🇬", price: "$60/hr", img: "bg-amber-500" }
+            ].map((m, i) => (
+              <div key={i} className="bg-[#f4f8fd] dark:bg-[#0a1220] rounded-xl p-6 border border-gray-100 dark:border-gray-800 text-left hover:shadow-lg transition-shadow">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className={`w-12 h-12 rounded-full ${m.img} flex items-center justify-center text-white font-bold text-lg`}>
+                    {m.name.split(' ').map(n=>n[0]).join('')}
+                  </div>
+                  <div>
+                    <h4 className="font-bold">{m.name}</h4>
+                    <p className="text-xs text-gray-500">{m.role} @ {m.co} {m.loc}</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <span className="font-semibold text-[#1673CA]">{m.price}</span>
+                  <Link to="/mentors" className="text-sm font-medium hover:text-[#1673CA]">View Profile &rarr;</Link>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Link to="/mentors" className="inline-flex items-center justify-center px-8 py-3.5 text-base font-semibold text-white bg-[#1673CA] rounded-lg hover:bg-[#0d4f8c] transition-all">
+            Browse All Mentors
+          </Link>
         </div>
       </section>
 

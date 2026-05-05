@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Compass, ArrowLeft, Download, RefreshCw, Share2, CheckCircle2, Circle, TrendingUp, Briefcase } from 'lucide-react';
+import { Compass, ArrowLeft, Download, RefreshCw, CheckCircle2, Circle, TrendingUp } from 'lucide-react';
 import { useProfile } from '../contexts/ProfileContext';
-import { sendSinglePrompt } from '../lib/gemini';
-import { getRoadmaps, setRoadmaps, generateId, type RoadmapData, type RoadmapMilestone } from '../lib/storage';
+import { getRoadmaps, setRoadmaps, generateId, type RoadmapData } from '../lib/storage';
 import { exportTextAsPDF } from '../lib/pdf';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ROADMAPS } from '../lib/roadmapsData';
 import toast from 'react-hot-toast';
 
 const EDUCATION_LEVELS = ['High School', 'O/A Levels', 'Bachelors', 'Masters', 'PhD', 'Self-taught', 'Bootcamp Graduate'];
@@ -13,68 +13,46 @@ const STARTING_POINTS = ['Complete beginner', 'Some knowledge', 'Intermediate'];
 
 export default function RoadmapPage() {
   const { profile } = useProfile();
-  const [career, setCareer] = useState('');
+  const [career, setCareer] = useState(ROADMAPS[0].career);
   const [education, setEducation] = useState(profile?.educationLevel || '');
   const [hours, setHours] = useState(10);
   const [startingPoint, setStartingPoint] = useState('Complete beginner');
   const [loading, setLoading] = useState(false);
   const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
 
-  const generateRoadmap = async () => {
-    if (!career.trim()) { toast.error('Please enter a target career'); return; }
+  const generateRoadmap = () => {
     setLoading(true);
-    try {
-      const prompt = `Create a detailed 12-month career roadmap for someone who wants to become a "${career}".
-Their current education: ${education}. Starting point: ${startingPoint}. Available hours per week: ${hours}.
+    setTimeout(() => {
+      try {
+        const template = ROADMAPS.find(r => r.career === career);
+        if (!template) throw new Error("Roadmap not found");
 
-Return EXACTLY this JSON format (no markdown, no code fences, just raw JSON):
-{
-  "milestones": [
-    {"month": "Month 1-2", "title": "Foundation", "tasks": ["Task 1", "Task 2", "Task 3"], "resources": ["Resource 1", "Resource 2"], "skills": ["Skill 1", "Skill 2"]},
-    {"month": "Month 3-4", "title": "Core Skills", "tasks": ["Task 1", "Task 2", "Task 3"], "resources": ["Resource 1", "Resource 2"], "skills": ["Skill 1", "Skill 2"]},
-    {"month": "Month 5-6", "title": "Practice", "tasks": ["Task 1", "Task 2", "Task 3"], "resources": ["Resource 1", "Resource 2"], "skills": ["Skill 1", "Skill 2"]},
-    {"month": "Month 7-8", "title": "Projects", "tasks": ["Task 1", "Task 2", "Task 3"], "resources": ["Resource 1", "Resource 2"], "skills": ["Skill 1", "Skill 2"]},
-    {"month": "Month 9-10", "title": "Advanced", "tasks": ["Task 1", "Task 2", "Task 3"], "resources": ["Resource 1", "Resource 2"], "skills": ["Skill 1", "Skill 2"]},
-    {"month": "Month 11-12", "title": "Job Ready", "tasks": ["Task 1", "Task 2", "Task 3"], "resources": ["Resource 1", "Resource 2"], "skills": ["Skill 1", "Skill 2"]}
-  ],
-  "salaryProgression": [
-    {"year": 0, "salary": 0}, {"year": 1, "salary": 45000}, {"year": 2, "salary": 55000}, {"year": 3, "salary": 70000}, {"year": 5, "salary": 95000}, {"year": 8, "salary": 130000}, {"year": 10, "salary": 160000}
-  ],
-  "jobTitles": ["Junior Title", "Mid Title", "Senior Title", "Lead Title"]
-}`;
-
-      const response = await sendSinglePrompt(prompt);
-      // Parse JSON from response
-      let jsonStr = response;
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) jsonStr = jsonMatch[0];
-
-      const parsed = JSON.parse(jsonStr);
-      const rmData: RoadmapData = {
-        id: generateId(),
-        career: career.trim(),
-        educationLevel: education,
-        hoursPerWeek: hours,
-        startingPoint,
-        milestones: parsed.milestones.map((m: any) => ({
-          month: m.month,
-          title: m.title,
-          tasks: m.tasks.map((t: string) => ({ text: t, completed: false })),
-          resources: m.resources,
-          skills: m.skills,
-        })),
-        salaryProgression: parsed.salaryProgression,
-        createdAt: new Date().toISOString(),
-      };
-      setRoadmap(rmData);
-      const existing = getRoadmaps();
-      setRoadmaps([rmData, ...existing]);
-      toast.success('Roadmap generated!');
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to generate roadmap. Please try again.');
-    }
-    setLoading(false);
+        const rmData: RoadmapData = {
+          id: generateId(),
+          career: template.career,
+          educationLevel: education,
+          hoursPerWeek: hours,
+          startingPoint,
+          milestones: template.milestones.map(m => ({
+            month: m.month,
+            title: m.title,
+            tasks: m.tasks.map(t => ({ text: t.text, completed: false })),
+            resources: m.resources,
+            skills: m.skills,
+          })),
+          salaryProgression: template.salaryProgression,
+          createdAt: new Date().toISOString(),
+        };
+        setRoadmap(rmData);
+        const existing = getRoadmaps();
+        setRoadmaps([rmData, ...existing]);
+        toast.success('Roadmap generated!');
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to generate roadmap.');
+      }
+      setLoading(false);
+    }, 500); // Simulate brief loading
   };
 
   const toggleTask = (milestoneIdx: number, taskIdx: number) => {
@@ -116,7 +94,7 @@ Return EXACTLY this JSON format (no markdown, no code fences, just raw JSON):
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-24 sm:py-8">
         {!roadmap ? (
           /* Input Form */
           <div className="max-w-xl mx-auto">
@@ -125,11 +103,14 @@ Return EXACTLY this JSON format (no markdown, no code fences, just raw JSON):
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Target Career *</label>
-                  <input type="text" value={career} onChange={e => setCareer(e.target.value)} placeholder="e.g. Software Engineer, Data Scientist..." className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-[#1673CA] outline-none" />
+                  <select value={career} onChange={e => setCareer(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-[#1673CA] outline-none">
+                    {ROADMAPS.map(r => <option key={r.career} value={r.career}>{r.career}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Current Education</label>
                   <select value={education} onChange={e => setEducation(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-[#1673CA] outline-none">
+                    <option value="">Select level...</option>
                     {EDUCATION_LEVELS.map(l => <option key={l}>{l}</option>)}
                   </select>
                 </div>

@@ -96,6 +96,19 @@ export interface AppSettings {
   autoPlayVoice: boolean;
 }
 
+export interface BookedSession {
+  id: string;
+  mentorId: string;
+  mentorName: string;
+  mentorPhoto: string;
+  date: string;
+  time: string;
+  duration: number;
+  price: number;
+  meetLink: string;
+  status: 'upcoming' | 'completed' | 'cancelled';
+}
+
 // Storage helpers
 export function storageGet<T>(key: string): T | null {
   try {
@@ -144,6 +157,9 @@ export const getSettings = (): AppSettings => storageGet<AppSettings>('settings'
   theme: 'light', fontSize: 'medium', voiceId: '', voiceSpeed: 1, voicePitch: 1, autoPlayVoice: false,
 };
 export const setSettings = (s: AppSettings) => storageSet('settings', s);
+
+export const getBookings = () => storageGet<BookedSession[]>('bookings') || [];
+export const setBookings = (b: BookedSession[]) => storageSet('bookings', b);
 
 export function exportAllData(): string {
   const data: Record<string, unknown> = {};

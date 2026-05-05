@@ -117,7 +117,7 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 pb-24 sm:py-8 space-y-6">
         {/* Profile */}
         <div className="bg-white dark:bg-[#111827] rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="font-bold text-lg mb-4">Profile</h2>
@@ -219,7 +219,7 @@ export default function SettingsPage() {
         <div className="bg-white dark:bg-[#111827] rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="font-bold text-lg mb-4">About</h2>
           <div className="space-y-2 text-sm text-gray-500">
-            <p><span className="font-medium text-gray-700 dark:text-gray-300">App:</span> NX RaahNuma v2.0</p>
+            <p><span className="font-medium text-gray-700 dark:text-gray-300">App:</span> NX RaahNuma v3.0</p>
             <p><span className="font-medium text-gray-700 dark:text-gray-300">Built by:</span> NerithonX Technologies (Pvt.) Ltd.</p>
             <p><span className="font-medium text-gray-700 dark:text-gray-300">Contact:</span> info@nerithonx.com</p>
           </div>

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ProfileProvider, useProfile } from './contexts/ProfileContext';
+import MobileBottomNav from './components/layout/MobileBottomNav';
 
 // Lazy load pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -14,6 +15,7 @@ const AssessmentPage = lazy(() => import('./pages/AssessmentPage'));
 const ScholarshipPage = lazy(() => import('./pages/ScholarshipPage'));
 const ResumeBuilderPage = lazy(() => import('./pages/ResumeBuilderPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const MentorsPage = lazy(() => import('./pages/MentorsPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 // Loading fallback
@@ -51,8 +53,10 @@ function AppRoutes() {
         <Route path="/scholarships" element={<ProtectedRoute><ScholarshipPage /></ProtectedRoute>} />
         <Route path="/resume" element={<ProtectedRoute><ResumeBuilderPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+        <Route path="/mentors" element={<ProtectedRoute><MentorsPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <MobileBottomNav />
     </Suspense>
   );
 }

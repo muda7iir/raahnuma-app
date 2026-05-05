@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Compass, ArrowLeft, ArrowRight, ChevronLeft, Download, RefreshCw, Lightbulb, Target, Users, MessageSquare as MsgIcon, Cpu, Flame, Heart } from 'lucide-react';
+import { Compass, ArrowLeft, ArrowRight, ChevronLeft, Download, RefreshCw, Target } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { sendSinglePrompt } from '../lib/gemini';
 import { getAssessments, setAssessments, generateId, type AssessmentResult } from '../lib/storage';
 import { exportTextAsPDF } from '../lib/pdf';
 import toast from 'react-hot-toast';
@@ -109,6 +108,39 @@ const QUESTIONS = [
 
 const DIMENSIONS = ['Problem Solving', 'Creativity', 'Leadership', 'Communication', 'Technical', 'Risk Tolerance', 'Social Skills'];
 
+const CAREER_MATCH_DB = {
+  'Analytical': [
+    { name: 'Data Scientist', matchPercent: 95, salary: '$80,000–$150,000', demand: 'High' },
+    { name: 'Business Analyst', matchPercent: 88, salary: '$70,000–$120,000', demand: 'High' },
+    { name: 'Financial Analyst', matchPercent: 82, salary: '$65,000–$130,000', demand: 'Medium' }
+  ],
+  'Creative': [
+    { name: 'UX/UI Designer', matchPercent: 92, salary: '$75,000–$140,000', demand: 'High' },
+    { name: 'Digital Marketer', matchPercent: 86, salary: '$60,000–$110,000', demand: 'Medium' },
+    { name: 'Product Designer', matchPercent: 80, salary: '$80,000–$150,000', demand: 'High' }
+  ],
+  'Leader': [
+    { name: 'Product Manager', matchPercent: 94, salary: '$90,000–$160,000', demand: 'High' },
+    { name: 'Project Manager', matchPercent: 89, salary: '$75,000–$130,000', demand: 'High' },
+    { name: 'Operations Director', matchPercent: 81, salary: '$100,000–$180,000', demand: 'Medium' }
+  ],
+  'Communicator': [
+    { name: 'HR Manager', matchPercent: 91, salary: '$70,000–$120,000', demand: 'Medium' },
+    { name: 'Sales Executive', matchPercent: 88, salary: '$60,000–$150,000', demand: 'High' },
+    { name: 'Public Relations', matchPercent: 80, salary: '$55,000–$100,000', demand: 'Medium' }
+  ],
+  'Technical': [
+    { name: 'Software Engineer', matchPercent: 96, salary: '$85,000–$160,000', demand: 'High' },
+    { name: 'DevOps Engineer', matchPercent: 90, salary: '$95,000–$170,000', demand: 'High' },
+    { name: 'Cybersecurity Analyst', matchPercent: 85, salary: '$80,000–$140,000', demand: 'High' }
+  ],
+  'Entrepreneur': [
+    { name: 'Startup Founder', matchPercent: 93, salary: 'Variable', demand: 'High' },
+    { name: 'Growth Hacker', matchPercent: 87, salary: '$75,000–$130,000', demand: 'Medium' },
+    { name: 'Freelance Consultant', matchPercent: 82, salary: 'Variable', demand: 'Medium' }
+  ]
+};
+
 export default function AssessmentPage() {
   const navigate = useNavigate();
   const [currentQ, setCurrentQ] = useState(0);
@@ -122,81 +154,53 @@ export default function AssessmentPage() {
     setAnswers(newAnswers);
   };
 
-  const calculateResults = async () => {
+  const calculateResults = () => {
     setLoading(true);
-    // Calculate scores
-    const scores: Record<string, number> = {};
-    DIMENSIONS.forEach(d => scores[d] = 0);
+    setTimeout(() => {
+      // Calculate scores
+      const scores: Record<string, number> = {};
+      DIMENSIONS.forEach(d => scores[d] = 0);
 
-    answers.forEach((ansIdx, qIdx) => {
-      if (ansIdx === undefined) return;
-      const option = QUESTIONS[qIdx].options[ansIdx];
-      Object.entries(option.score).forEach(([dim, val]) => {
-        scores[dim] = (scores[dim] || 0) + val;
+      answers.forEach((ansIdx, qIdx) => {
+        if (ansIdx === undefined) return;
+        const option = QUESTIONS[qIdx].options[ansIdx];
+        Object.entries(option.score).forEach(([dim, val]) => {
+          scores[dim] = (scores[dim] || 0) + val;
+        });
       });
-    });
 
-    // Normalize to 0-100
-    const maxPossible = 20;
-    DIMENSIONS.forEach(d => scores[d] = Math.min(100, Math.round((scores[d] / maxPossible) * 100)));
+      // Normalize to 0-100
+      const maxPossible = 20;
+      DIMENSIONS.forEach(d => scores[d] = Math.min(100, Math.round((scores[d] / maxPossible) * 100)));
 
-    // Determine personality type
-    const topDim = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
-    const typeMap: Record<string, string> = {
-      'Problem Solving': 'Analytical', 'Creativity': 'Creative', 'Leadership': 'Leader',
-      'Communication': 'Communicator', 'Technical': 'Technical', 'Risk Tolerance': 'Entrepreneur', 'Social Skills': 'Communicator'
-    };
-    const personalityType = typeMap[topDim] || 'Analytical';
+      // Determine personality type
+      const topDim = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
+      const typeMap: Record<string, string> = {
+        'Problem Solving': 'Analytical', 'Creativity': 'Creative', 'Leadership': 'Leader',
+        'Communication': 'Communicator', 'Technical': 'Technical', 'Risk Tolerance': 'Entrepreneur', 'Social Skills': 'Communicator'
+      };
+      const personalityType = typeMap[topDim] || 'Analytical';
 
-    // Get career matches from AI
-    try {
-      const prompt = `Based on these skill assessment scores (out of 100): ${JSON.stringify(scores)}, personality type: ${personalityType}.
-Return EXACTLY this JSON (no markdown, no code fences):
-[
-  {"name": "Career 1", "matchPercent": 95, "salary": "$80,000–$150,000", "demand": "High"},
-  {"name": "Career 2", "matchPercent": 88, "salary": "$70,000–$130,000", "demand": "High"},
-  {"name": "Career 3", "matchPercent": 82, "salary": "$60,000–$120,000", "demand": "Medium"},
-  {"name": "Career 4", "matchPercent": 75, "salary": "$55,000–$110,000", "demand": "Medium"},
-  {"name": "Career 5", "matchPercent": 68, "salary": "$50,000–$100,000", "demand": "High"}
-]`;
-      const res = await sendSinglePrompt(prompt);
-      let jsonStr = res;
-      const match = res.match(/\[[\s\S]*\]/);
-      if (match) jsonStr = match[0];
-      const careers = JSON.parse(jsonStr);
+      const careers = CAREER_MATCH_DB[personalityType as keyof typeof CAREER_MATCH_DB] || CAREER_MATCH_DB['Analytical'];
 
       const assessment: AssessmentResult = {
         id: generateId(), scores, personalityType,
         careerMatches: careers, completedAt: new Date().toISOString(),
       };
+      
       setResult(assessment);
       const existing = getAssessments();
       setAssessments([assessment, ...existing]);
       toast.success('Assessment complete!');
-    } catch {
-      const fallbackCareers = [
-        { name: 'Software Engineer', matchPercent: 90, salary: '$80,000–$150,000', demand: 'High' },
-        { name: 'Product Manager', matchPercent: 85, salary: '$90,000–$160,000', demand: 'High' },
-        { name: 'Data Analyst', matchPercent: 78, salary: '$60,000–$110,000', demand: 'High' },
-        { name: 'UX Designer', matchPercent: 72, salary: '$65,000–$120,000', demand: 'Medium' },
-        { name: 'Business Analyst', matchPercent: 68, salary: '$55,000–$100,000', demand: 'Medium' },
-      ];
-      const assessment: AssessmentResult = {
-        id: generateId(), scores, personalityType,
-        careerMatches: fallbackCareers, completedAt: new Date().toISOString(),
-      };
-      setResult(assessment);
-      const existing = getAssessments();
-      setAssessments([assessment, ...existing]);
-    }
-    setLoading(false);
+      setLoading(false);
+    }, 600);
   };
 
   const radarData = result ? DIMENSIONS.map(d => ({ subject: d, value: result.scores[d] || 0, fullMark: 100 })) : [];
 
   if (result) {
     return (
-      <div className="min-h-screen bg-[#f4f8fd] dark:bg-[#0a1220] p-4 sm:p-8">
+      <div className="min-h-screen bg-[#f4f8fd] dark:bg-[#0a1220] p-4 pt-8 pb-24 sm:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <Link to="/dashboard" className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#1673CA]"><ArrowLeft className="w-4 h-4" /> Dashboard</Link>
@@ -235,7 +239,7 @@ Return EXACTLY this JSON (no markdown, no code fences):
 
           {/* Career Matches */}
           <div className="bg-white dark:bg-[#111827] rounded-2xl border border-gray-200 dark:border-gray-700 p-6 mt-6">
-            <h2 className="font-bold text-lg mb-4">Top 5 Career Matches</h2>
+            <h2 className="font-bold text-lg mb-4">Top Career Matches</h2>
             <div className="space-y-4">
               {result.careerMatches.map((c, i) => (
                 <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
@@ -264,7 +268,7 @@ Return EXACTLY this JSON (no markdown, no code fences):
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f8fd] dark:bg-[#0a1220] flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-[#f4f8fd] dark:bg-[#0a1220] flex items-center justify-center px-4 pt-8 pb-24 sm:py-8">
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-6">

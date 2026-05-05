@@ -13,14 +13,18 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => getSettings().theme);
-  const [fontSize, setFS] = useState<'small' | 'medium' | 'large'>(() => getSettings().fontSize);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('nxraahnuma_theme') as 'light' | 'dark') || 'light';
+  });
+  const [fontSize, setFS] = useState<'small' | 'medium' | 'large'>(() => getSettings().fontSize || 'medium');
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'dark') { root.classList.add('dark'); } else { root.classList.remove('dark'); }
-    const settings = getSettings();
-    saveSettings({ ...settings, theme });
+    if (theme === 'dark') { 
+      root.classList.add('dark'); 
+    } else { 
+      root.classList.remove('dark'); 
+    }
   }, [theme]);
 
   useEffect(() => {
@@ -31,7 +35,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     saveSettings({ ...settings, fontSize });
   }, [fontSize]);
 
-  const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
+  const toggleTheme = () => {
+    const html = document.documentElement;
+    const isDark = html.classList.contains('dark');
+    if (isDark) {
+      html.classList.remove('dark');
+      localStorage.setItem('nxraahnuma_theme', 'light');
+      setTheme('light');
+    } else {
+      html.classList.add('dark');
+      localStorage.setItem('nxraahnuma_theme', 'dark');
+      setTheme('dark');
+    }
+  };
+
   const setFontSize = (s: 'small' | 'medium' | 'large') => setFS(s);
 
   return (

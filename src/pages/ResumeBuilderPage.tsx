@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Compass, ArrowLeft, Plus, Trash2, Wand2, Download, ChevronDown, ChevronUp, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useProfile } from '../contexts/ProfileContext';
-import { sendSinglePrompt } from '../lib/gemini';
 import { getResumes, setResumes, generateId, type ResumeData } from '../lib/storage';
 import { exportElementAsPDF } from '../lib/pdf';
+import { RESUME_SUMMARIES, RESUME_BULLETS } from '../lib/resumeTemplates';
 import toast from 'react-hot-toast';
 
 const EMPTY_RESUME: ResumeData = {
@@ -47,59 +47,81 @@ export default function ResumeBuilderPage() {
     return () => clearTimeout(timer);
   }, [resume]);
 
-  const aiWriteSummary = async () => {
+  const autoWriteSummary = () => {
     setLoading('summary');
-    try {
-      const prompt = `Write a professional resume summary (3-4 sentences) for: ${resume.personalInfo.name}, with experience in ${resume.skills.join(', ')}. Education: ${resume.education.map(e => e.degree).join(', ')}. Keep it concise, professional, ATS-friendly. Return just the text, no markdown.`;
-      const res = await sendSinglePrompt(prompt);
-      update('summary', res.replace(/\*\*/g, '').trim());
+    setTimeout(() => {
+      const bestMatch = RESUME_SUMMARIES.find(s => 
+        resume.experience.some(e => s.category.toLowerCase().includes(e.role.split(' ')[0].toLowerCase())) ||
+        s.category === 'Recent Graduate'
+      );
+      update('summary', bestMatch ? bestMatch.text : RESUME_SUMMARIES[RESUME_SUMMARIES.length - 1].text);
       toast.success('Summary generated!');
-    } catch { toast.error('Failed to generate summary'); }
-    setLoading(null);
+      setLoading(null);
+    }, 400);
   };
 
-  const aiImproveText = async (text: string, field: string) => {
-    setLoading(field);
-    try {
-      const prompt = `Improve this resume bullet point to be more professional, using action verbs and quantifiable metrics. Keep it to 1-2 sentences. Original: "${text}". Return just the improved text, no markdown.`;
-      const res = await sendSinglePrompt(prompt);
-      return res.replace(/\*\*/g, '').trim();
-    } catch { toast.error('Failed to improve text'); return text; }
-    finally { setLoading(null); }
+  const autoImproveText = (index: number) => {
+    setLoading(`exp-${index}`);
+    setTimeout(() => {
+      const role = resume.experience[index].role;
+      let bullets = RESUME_BULLETS['General'];
+      for (const key of Object.keys(RESUME_BULLETS)) {
+        if (role.toLowerCase().includes(key.toLowerCase().split(' ')[0])) {
+          bullets = RESUME_BULLETS[key];
+          break;
+        }
+      }
+      const randomBullet = bullets[Math.floor(Math.random() * bullets.length)];
+      const u = [...resume.experience]; 
+      u[index] = { ...u[index], description: randomBullet }; 
+      update('experience', u);
+      setLoading(null);
+    }, 400);
   };
 
-  const aiSuggestSkills = async () => {
+  const autoSuggestSkills = () => {
     setLoading('skills');
-    try {
-      const roles = resume.experience.map(e => e.role).join(', ');
-      const prompt = `Suggest 10 relevant professional skills for a resume that includes roles: ${roles || 'general professional'}. Return just a comma-separated list, no numbering.`;
-      const res = await sendSinglePrompt(prompt);
-      const suggested = res.split(',').map(s => s.trim()).filter(Boolean);
-      update('skills', [...new Set([...resume.skills, ...suggested])]);
+    setTimeout(() => {
+      const generalSkills = ["Project Management", "Communication", "Problem Solving", "Leadership", "Data Analysis", "Agile Methodologies"];
+      const newSkills = [...new Set([...resume.skills, ...generalSkills])].slice(0, 10);
+      update('skills', newSkills);
       toast.success('Skills suggested!');
-    } catch { toast.error('Failed to suggest skills'); }
-    setLoading(null);
+      setLoading(null);
+    }, 400);
   };
 
-  const checkATS = async () => {
+  const checkATS = () => {
     setLoading('ats');
-    try {
-      const content = `Name: ${resume.personalInfo.name}\nSummary: ${resume.summary}\nExperience: ${resume.experience.map(e => `${e.role} at ${e.company}: ${e.description}`).join('; ')}\nSkills: ${resume.skills.join(', ')}\nEducation: ${resume.education.map(e => `${e.degree} from ${e.institution}`).join('; ')}`;
-      const prompt = `Analyze this resume for ATS (Applicant Tracking System) compatibility. Return EXACTLY this JSON (no markdown):
-{"score": 75, "tips": ["Tip 1", "Tip 2", "Tip 3", "Tip 4"]}
-Score should be 0-100. Give 4 specific improvement tips.
-Resume: ${content}`;
-      const res = await sendSinglePrompt(prompt);
-      const match = res.match(/\{[\s\S]*\}/);
-      if (match) setAtsScore(JSON.parse(match[0]));
+    setTimeout(() => {
+      let score = 50;
+      const tips = [];
+      
+      if (resume.summary.length > 50) score += 10;
+      else tips.push("Add a more detailed professional summary.");
+      
+      if (resume.experience.length > 0) {
+        score += 15;
+        if (resume.experience.every(e => e.description.length > 20)) score += 10;
+        else tips.push("Expand on your work experience descriptions using action verbs.");
+      } else tips.push("Add at least one work experience or internship.");
+      
+      if (resume.skills.length >= 5) score += 10;
+      else tips.push("List at least 5 key skills relevant to your target job.");
+      
+      if (resume.education.length > 0) score += 5;
+      else tips.push("Add your educational background.");
+
+      if (tips.length < 4) tips.push("Use standard formatting and fonts to ensure ATS readability.", "Include quantifiable metrics (e.g., 'increased sales by 20%') in your experience.");
+
+      setAtsScore({ score, tips: tips.slice(0, 4) });
       toast.success('ATS analysis complete!');
-    } catch { toast.error('Failed to check ATS score'); }
-    setLoading(null);
+      setLoading(null);
+    }, 600);
   };
 
   const downloadPDF = async () => {
     try {
-      await exportElementAsPDF('resume-preview', `nxraahnuma-resume-${resume.personalInfo.name.replace(/\s+/g, '-')}.pdf`);
+      await exportElementAsPDF('resume-preview', `nxraahnuma-resume-${resume.personalInfo.name.replace(/\s+/g, '-') || 'download'}.pdf`);
       toast.success('Resume downloaded!');
     } catch { toast.error('Failed to download. Try again.'); }
   };
@@ -141,7 +163,7 @@ Resume: ${content}`;
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-24 sm:py-6">
         {atsScore && (
           <div className="bg-white dark:bg-[#111827] rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
             <div className="flex items-center gap-4">
@@ -178,8 +200,8 @@ Resume: ${content}`;
 
             <Section id="summary" title="Professional Summary">
               <textarea value={resume.summary} onChange={e => update('summary', e.target.value)} rows={4} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 outline-none focus:ring-1 focus:ring-[#1673CA] resize-none" placeholder="A brief professional summary..." />
-              <button onClick={aiWriteSummary} disabled={loading === 'summary'} className="flex items-center gap-1 text-xs text-[#1673CA] hover:underline font-medium">
-                {loading === 'summary' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Write with AI
+              <button onClick={autoWriteSummary} disabled={loading === 'summary'} className="flex items-center gap-1 text-xs text-[#1673CA] hover:underline font-medium">
+                {loading === 'summary' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Auto-Write Suggestion
               </button>
             </Section>
 
@@ -196,8 +218,8 @@ Resume: ${content}`;
                     <input value={exp.endDate} onChange={e => { const u = [...resume.experience]; u[i] = { ...u[i], endDate: e.target.value }; update('experience', u); }} placeholder="End (or Present)" className="px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 outline-none" />
                   </div>
                   <textarea value={exp.description} onChange={e => { const u = [...resume.experience]; u[i] = { ...u[i], description: e.target.value }; update('experience', u); }} placeholder="Description..." rows={2} className="w-full px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 outline-none resize-none" />
-                  <button onClick={async () => { const improved = await aiImproveText(exp.description, `exp-${i}`); const u = [...resume.experience]; u[i] = { ...u[i], description: improved }; update('experience', u); }} className="flex items-center gap-1 text-[10px] text-[#1673CA] hover:underline font-medium">
-                    {loading === `exp-${i}` ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <Wand2 className="w-2.5 h-2.5" />} Improve with AI
+                  <button onClick={() => autoImproveText(i)} className="flex items-center gap-1 text-[10px] text-[#1673CA] hover:underline font-medium">
+                    {loading === `exp-${i}` ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <Wand2 className="w-2.5 h-2.5" />} Suggest Bullet Point
                   </button>
                 </div>
               ))}
@@ -228,8 +250,8 @@ Resume: ${content}`;
                 ))}
               </div>
               <input placeholder="Type a skill and press Enter" onKeyDown={e => { if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) { update('skills', [...resume.skills, (e.target as HTMLInputElement).value.trim()]); (e.target as HTMLInputElement).value = ''; } }} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 outline-none focus:ring-1 focus:ring-[#1673CA]" />
-              <button onClick={aiSuggestSkills} disabled={loading === 'skills'} className="flex items-center gap-1 text-xs text-[#1673CA] hover:underline font-medium">
-                {loading === 'skills' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Suggest Skills with AI
+              <button onClick={autoSuggestSkills} disabled={loading === 'skills'} className="flex items-center gap-1 text-xs text-[#1673CA] hover:underline font-medium">
+                {loading === 'skills' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Auto Suggest Skills
               </button>
             </Section>
           </div>

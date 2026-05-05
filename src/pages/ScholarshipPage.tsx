@@ -1,23 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Compass, ArrowLeft, Search, Heart, ExternalLink, Clock, RefreshCw, Filter, X } from 'lucide-react';
-import { sendSinglePrompt } from '../lib/gemini';
+import { Compass, ArrowLeft, Search, Heart, ExternalLink, Clock, RefreshCw, Filter } from 'lucide-react';
 import { getScholarships, setScholarships, generateId, type SavedScholarship } from '../lib/storage';
+import { SCHOLARSHIPS } from '../lib/scholarshipsData';
 import toast from 'react-hot-toast';
 
-const COUNTRIES_LIST = ['United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'Netherlands', 'Sweden', 'Japan', 'Korea South', 'Turkey', 'Malaysia', 'China', 'France', 'Italy', 'Switzerland', 'Singapore', 'New Zealand', 'Ireland', 'Norway', 'Denmark'];
-const FIELDS = ['Engineering', 'Medicine', 'Business', 'Arts', 'Law', 'Science', 'Technology', 'Design', 'Education'];
-const LEVELS = ['Bachelors', 'Masters', 'PhD', 'Short Course'];
-const FUNDING_TYPES = ['Full scholarship', 'Partial', 'Stipend only', 'Tuition only'];
-const DEADLINES = ['Within 1 month', 'Within 3 months', 'Within 6 months', 'Any'];
+const COUNTRIES_LIST = Array.from(new Set(SCHOLARSHIPS.map(s => s.country)));
+const FUNDING_TYPES = ['Full scholarship', 'Partial', 'Stipend', 'Grants'];
 
 export default function ScholarshipPage() {
   const navigate = useNavigate();
   const [countries, setCountries] = useState<string[]>([]);
-  const [fields, setFields] = useState<string[]>([]);
-  const [level, setLevel] = useState('');
   const [funding, setFunding] = useState('');
-  const [deadline, setDeadline] = useState('Any');
   const [results, setResults] = useState<SavedScholarship[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -27,35 +21,26 @@ export default function ScholarshipPage() {
     setter(arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item]);
   };
 
-  const findScholarships = async () => {
+  const findScholarships = () => {
     setLoading(true);
     setSearched(true);
-    try {
-      const prompt = `Find 6 real scholarships matching these criteria:
-Countries: ${countries.length ? countries.join(', ') : 'Any'}
-Fields: ${fields.length ? fields.join(', ') : 'Any'}
-Level: ${level || 'Any'}
-Funding: ${funding || 'Any'}
-Deadline: ${deadline}
-
-Return EXACTLY this JSON array (no markdown, no code fences):
-[
-  {"name": "Scholarship Name", "country": "Country", "university": "University/Org", "amount": "$XX,XXX", "deadline": "2026-XX-XX", "eligibility": "Brief eligibility", "coverage": "What it covers", "link": "https://example.com"},
-  ...6 items total
-]
-Use REAL scholarship names that actually exist (like Fulbright, Chevening, DAAD, Erasmus Mundus, etc). Be accurate.`;
-
-      const res = await sendSinglePrompt(prompt);
-      let jsonStr = res;
-      const match = res.match(/\[[\s\S]*\]/);
-      if (match) jsonStr = match[0];
-      const parsed = JSON.parse(jsonStr);
-      setResults(parsed.map((s: any) => ({ ...s, id: generateId(), savedAt: '' })));
-    } catch {
-      toast.error('Failed to find scholarships. Try again.');
-      setResults([]);
-    }
-    setLoading(false);
+    
+    setTimeout(() => {
+      let filtered = SCHOLARSHIPS;
+      if (countries.length > 0) {
+        filtered = filtered.filter(s => countries.includes(s.country) || s.country.includes('Multiple') || s.country.includes('Any'));
+      }
+      if (funding && funding !== 'Any') {
+        filtered = filtered.filter(s => s.amount.toLowerCase().includes(funding.toLowerCase()));
+      }
+      
+      // Select random subset if more than 6, to simulate search discovery
+      const shuffled = [...filtered].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, 6);
+      
+      setResults(selected.map(s => ({ ...s, id: generateId(), savedAt: '' })));
+      setLoading(false);
+    }, 400); // Simulate network delay
   };
 
   const toggleFavorite = (scholarship: SavedScholarship) => {
@@ -88,7 +73,7 @@ Use REAL scholarship names that actually exist (like Fulbright, Chevening, DAAD,
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-24 sm:py-8">
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Filters */}
           <div className="lg:col-span-1">
@@ -97,38 +82,17 @@ Use REAL scholarship names that actually exist (like Fulbright, Chevening, DAAD,
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Country of Study</label>
-                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                  <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
                     {COUNTRIES_LIST.map(c => (
                       <button key={c} onClick={() => toggleArray(countries, c, setCountries)} className={`px-2 py-1 rounded-md text-xs transition-all ${countries.includes(c) ? 'bg-[#1673CA] text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-[#1673CA]/10'}`}>{c}</button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Field of Study</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {FIELDS.map(f => (
-                      <button key={f} onClick={() => toggleArray(fields, f, setFields)} className={`px-2 py-1 rounded-md text-xs transition-all ${fields.includes(f) ? 'bg-[#1673CA] text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-[#1673CA]/10'}`}>{f}</button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Level</label>
-                  <select value={level} onChange={e => setLevel(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 outline-none focus:ring-1 focus:ring-[#1673CA]">
-                    <option value="">Any</option>
-                    {LEVELS.map(l => <option key={l}>{l}</option>)}
-                  </select>
-                </div>
-                <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Funding</label>
                   <select value={funding} onChange={e => setFunding(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 outline-none focus:ring-1 focus:ring-[#1673CA]">
                     <option value="">Any</option>
-                    {FUNDING_TYPES.map(f => <option key={f}>{f}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Deadline</label>
-                  <select value={deadline} onChange={e => setDeadline(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 outline-none focus:ring-1 focus:ring-[#1673CA]">
-                    {DEADLINES.map(d => <option key={d}>{d}</option>)}
+                    {FUNDING_TYPES.map(f => <option key={f} value={f.split(' ')[0]}>{f}</option>)}
                   </select>
                 </div>
                 <button onClick={findScholarships} disabled={loading} className="w-full py-2.5 bg-[#1673CA] text-white rounded-lg font-semibold text-sm hover:bg-[#0d4f8c] disabled:opacity-50 flex items-center justify-center gap-2">
