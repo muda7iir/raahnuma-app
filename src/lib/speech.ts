@@ -6,7 +6,7 @@ export function isSpeechSynthesisSupported(): boolean {
   return 'speechSynthesis' in window;
 }
 
-export function createRecognition(): SpeechRecognition | null {
+export function createRecognition(): any | null {
   if (!isSpeechRecognitionSupported()) return null;
   const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const recognition = new SpeechRecognitionAPI();

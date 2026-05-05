@@ -107,6 +107,7 @@ export interface BookedSession {
   price: number;
   meetLink: string;
   status: 'upcoming' | 'completed' | 'cancelled';
+  bookedAt?: string;
 }
 
 // Storage helpers
@@ -160,6 +161,10 @@ export const setSettings = (s: AppSettings) => storageSet('settings', s);
 
 export const getBookings = () => storageGet<BookedSession[]>('bookings') || [];
 export const setBookings = (b: BookedSession[]) => storageSet('bookings', b);
+export const addBooking = (b: BookedSession) => {
+  const current = getBookings();
+  setBookings([...current, b]);
+};
 
 export function exportAllData(): string {
   const data: Record<string, unknown> = {};

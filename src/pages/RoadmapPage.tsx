@@ -187,7 +187,7 @@ export default function RoadmapPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis dataKey="year" tick={{ fontSize: 11 }} label={{ value: 'Years', position: 'bottom', fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(v: number) => [`$${v.toLocaleString()}`, 'Salary']} />
+                      <Tooltip formatter={(v: any) => [`$${Number(v).toLocaleString()}`, 'Salary']} />
                       <Line type="monotone" dataKey="salary" stroke="#1673CA" strokeWidth={2} dot={{ fill: '#1673CA' }} />
                     </LineChart>
                   </ResponsiveContainer>

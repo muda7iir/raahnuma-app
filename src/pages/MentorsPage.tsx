@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Compass, ArrowLeft, Search, Star, Clock, Calendar, Video, CheckCircle2, X } from 'lucide-react';
-import { MENTORS, type Mentor } from '../lib/mentorsData';
+import { mentors, type Mentor } from '../lib/mentorsData';
 import { addBooking, generateId } from '../lib/storage';
 import toast from 'react-hot-toast';
 
-const INDUSTRIES = Array.from(new Set(MENTORS.map(m => m.industry)));
+const INDUSTRIES = Array.from(new Set(mentors.map(m => m.specialties[0] || 'Tech')));
 
 export default function MentorsPage() {
   const navigate = useNavigate();
@@ -18,11 +18,11 @@ export default function MentorsPage() {
   const [bookingTime, setBookingTime] = useState('');
   const [isBooking, setIsBooking] = useState(false);
 
-  const filteredMentors = MENTORS.filter(m => {
+  const filteredMentors = mentors.filter(m => {
     const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           m.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           m.company.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesIndustry = selectedIndustry === 'All' || m.industry === selectedIndustry;
+    const matchesIndustry = selectedIndustry === 'All' || m.specialties.includes(selectedIndustry);
     return matchesSearch && matchesIndustry;
   });
 
@@ -40,10 +40,11 @@ export default function MentorsPage() {
         id: generateId(),
         mentorId: selectedMentor.id,
         mentorName: selectedMentor.name,
-        mentorPhoto: selectedMentor.photoColor,
+        mentorPhoto: selectedMentor.avatarColor,
         date: bookingDate,
         time: bookingTime,
         duration: 45,
+        price: selectedMentor.price,
         status: 'upcoming',
         meetLink: `https://meet.google.com/${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`,
         bookedAt: new Date().toISOString()
@@ -124,30 +125,30 @@ export default function MentorsPage() {
             {filteredMentors.map(mentor => (
               <div key={mentor.id} className="bg-white dark:bg-[#111827] rounded-2xl border border-gray-200 dark:border-gray-700 p-6 flex flex-col hover:border-[#1673CA]/50 transition-colors">
                 <div className="flex items-start gap-4 mb-4">
-                  <div className={`w-16 h-16 rounded-full ${mentor.photoColor} flex items-center justify-center text-white text-xl font-bold shrink-0`}>
+                  <div className={`w-16 h-16 rounded-full ${mentor.avatarColor} flex items-center justify-center text-white text-xl font-bold shrink-0`}>
                     {mentor.name.split(' ').map(n=>n[0]).join('')}
                   </div>
                   <div>
                     <h3 className="font-bold text-lg leading-tight">{mentor.name}</h3>
                     <p className="text-sm text-[#1673CA] font-medium">{mentor.role}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{mentor.company} • {mentor.experience}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{mentor.company} • {mentor.location}</p>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  <div className="flex items-center gap-1"><Star className="w-4 h-4 text-amber-400 fill-current" /> <span className="font-medium text-gray-900 dark:text-white">{mentor.rating}</span> ({mentor.reviews})</div>
+                  <div className="flex items-center gap-1"><Star className="w-4 h-4 text-amber-400 fill-current" /> <span className="font-medium text-gray-900 dark:text-white">{mentor.rating}</span> ({mentor.reviewsCount})</div>
                   <div className="flex items-center gap-1"><Clock className="w-4 h-4" /> 45 min</div>
                 </div>
 
                 <div className="flex flex-wrap gap-1.5 mb-6">
-                  {mentor.expertise.slice(0, 3).map((skill, i) => (
+                  {mentor.specialties.slice(0, 3).map((skill: string, i: number) => (
                     <span key={i} className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs font-medium">{skill}</span>
                   ))}
-                  {mentor.expertise.length > 3 && <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs font-medium">+{mentor.expertise.length - 3}</span>}
+                  {mentor.specialties.length > 3 && <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs font-medium">+{mentor.specialties.length - 3}</span>}
                 </div>
 
                 <div className="mt-auto">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white mb-3">${mentor.hourlyRate}/session</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white mb-3">${mentor.price}/session</p>
                   <button onClick={() => setSelectedMentor(mentor)} className="w-full py-2.5 bg-[#1673CA]/10 text-[#1673CA] font-semibold rounded-xl hover:bg-[#1673CA] hover:text-white transition-colors">
                     View & Book
                   </button>
@@ -168,14 +169,14 @@ export default function MentorsPage() {
             
             <div className="p-6 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-4">
-                <div className={`w-20 h-20 rounded-full ${selectedMentor.photoColor} flex items-center justify-center text-white text-2xl font-bold`}>
+                <div className={`w-20 h-20 rounded-full ${selectedMentor.avatarColor} flex items-center justify-center text-white text-2xl font-bold`}>
                   {selectedMentor.name.split(' ').map(n=>n[0]).join('')}
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">{selectedMentor.name}</h2>
                   <p className="text-[#1673CA] font-medium">{selectedMentor.role} at {selectedMentor.company}</p>
                   <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                    <Star className="w-4 h-4 text-amber-400 fill-current" /> <span className="font-medium text-gray-900 dark:text-white">{selectedMentor.rating}</span> ({selectedMentor.reviews} reviews) • {selectedMentor.industry}
+                    <Star className="w-4 h-4 text-amber-400 fill-current" /> <span className="font-medium text-gray-900 dark:text-white">{selectedMentor.rating}</span> ({selectedMentor.reviewsCount} reviews) • {selectedMentor.specialties[0]}
                   </div>
                 </div>
               </div>
@@ -183,11 +184,11 @@ export default function MentorsPage() {
 
             <div className="p-6">
               <h3 className="font-bold mb-2">About</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">{selectedMentor.bio}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">{selectedMentor.fullBio || selectedMentor.bio}</p>
               
               <h3 className="font-bold mb-3">Expertise</h3>
               <div className="flex flex-wrap gap-2 mb-8">
-                {selectedMentor.expertise.map((skill, i) => (
+                {selectedMentor.specialties.map((skill: string, i: number) => (
                   <span key={i} className="px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">{skill}</span>
                 ))}
               </div>
@@ -230,7 +231,7 @@ export default function MentorsPage() {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                   <div>
                     <p className="text-sm text-gray-500">Total Price</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">${selectedMentor.hourlyRate}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">${selectedMentor.price}</p>
                   </div>
                   <button 
                     onClick={handleBooking}
